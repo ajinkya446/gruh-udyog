@@ -26,25 +26,8 @@ body:
       required: true
 
   - type: textarea
-    id: use_cases
-    attributes:
-      label: Use cases
-      description: Who benefits and how would this be used?
-      placeholder: Sellers can update stock quantities from a single screen without editing each listing individually.
-
-  - type: textarea
     id: alternatives
     attributes:
       label: Alternatives considered
       description: Have you considered other ways to solve this?
       placeholder: Manual editing per product, spreadsheet import, or third-party inventory tools.
-
-  - type: textarea
-    id: acceptance
-    attributes:
-      label: Acceptance criteria
-      description: What would make this feature successful?
-      placeholder: |
-        - Seller can update stock for multiple products in one action
-        - Validation errors are surfaced clearly
-        - Changes are reflected in the product list immediately
