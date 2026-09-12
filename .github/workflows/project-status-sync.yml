@@ -50,14 +50,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          ISSUE_NUMBER="$(python3 - "$PR_BODY" <<'PY'
-            import os, re, sys
-            text = sys.argv[1] or ""
-            matches = re.findall(r'(?i)\b(?:fixes|closes|resolves)\s+#(\d+)\b', text)
-            if matches:
-                print(matches[0])
-          PY
-          )"
+          ISSUE_NUMBER="$(python3 -c 'import re, sys; text = sys.argv[1] or ""; patterns = [r"(?i)\\b(?:fixes|closes|resolves)\\s+#(\\d+)\\b", r"(?i)\\b(?:fixes|closes|resolves)\\s+https?://github\\.com/[^/]+/[^/]+/issues/(\\d+)\\b"]; print(next((m[0] for p in patterns for m in [re.findall(p, text)] if m), ""))' "$PR_BODY")"
 
           if [[ -z "$ISSUE_NUMBER" ]]; then
             echo "No linked issue found in PR body. Skipping project status update."
