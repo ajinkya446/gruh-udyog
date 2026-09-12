@@ -1,5 +1,7 @@
 # Gruh Udyog
 
+![Gruh Udyog app preview](assets/readme/gruh-udyog-ui-preview.png)
+
 A scalable Flutter-based marketplace platform that helps local home-based businesses (Gruh Udyog) sell products directly to customers while giving buyers a simple and trusted shopping experience.
 
 The product is designed around three connected experiences:
