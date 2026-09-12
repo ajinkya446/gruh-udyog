@@ -1,0 +1,96 @@
+name: Sync linked issue project status
+
+on:
+  pull_request:
+    types: [opened, reopened, closed]
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+jobs:
+  sync-project-status:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+      PROJECT_LOGIN: ajinkya446
+      PROJECT_NUMBER: 4
+
+    steps:
+      - name: Determine target project status
+        id: target
+        shell: bash
+        env:
+          PR_ACTION: ${{ github.event.action }}
+          PR_MERGED: ${{ github.event.pull_request.merged }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$PR_ACTION" == "opened" || "$PR_ACTION" == "reopened" ]]; then
+            echo "status=In PR" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ "$PR_ACTION" == "closed" && "$PR_MERGED" == "true" ]]; then
+            echo "status=Done" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "status=skip" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve linked issue and update project status
+        if: steps.target.outputs.status != 'skip'
+        shell: bash
+        env:
+          TARGET_STATUS: ${{ steps.target.outputs.status }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.event.repository.name }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set -euo pipefail
+
+          ISSUE_NUMBER="$(python3 - "$PR_BODY" <<'PY'
+            import os, re, sys
+            text = sys.argv[1] or ""
+            matches = re.findall(r'(?i)\b(?:fixes|closes|resolves)\s+#(\d+)\b', text)
+            if matches:
+                print(matches[0])
+          PY
+          )"
+
+          if [[ -z "$ISSUE_NUMBER" ]]; then
+            echo "No linked issue found in PR body. Skipping project status update."
+            exit 0
+          fi
+
+          PROJECT_DATA="$(gh api graphql -F login="$PROJECT_LOGIN" -F number="$PROJECT_NUMBER" -f query='query($login: String!, $number: Int!) { user(login: $login) { projectV2(number: $number) { id fields(first: 100) { nodes { ... on ProjectV2SingleSelectField { id name options { id name } } } } } } }')"
+
+          PROJECT_ID="$(echo "$PROJECT_DATA" | jq -r '.data.user.projectV2.id // empty')"
+          STATUS_FIELD_ID="$(echo "$PROJECT_DATA" | jq -r '.data.user.projectV2.fields.nodes[] | select(.name == "Status") | .id // empty' | head -n 1)"
+          TARGET_OPTION_ID="$(echo "$PROJECT_DATA" | jq -r --arg name "$TARGET_STATUS" '.data.user.projectV2.fields.nodes[] | select(.name == "Status") | .options[] | select(.name == $name) | .id // empty' | head -n 1)"
+
+          if [[ -z "$PROJECT_ID" || -z "$STATUS_FIELD_ID" || -z "$TARGET_OPTION_ID" ]]; then
+            echo "Project #$PROJECT_NUMBER or required status metadata could not be resolved. Skipping."
+            exit 0
+          fi
+
+          ISSUE_DATA="$(gh api graphql -F owner="$REPO_OWNER" -F repo="$REPO_NAME" -F number="$ISSUE_NUMBER" -f query='query($owner: String!, $repo: String!, $number: Int!) { repository(owner: $owner, name: $repo) { issue(number: $number) { id projectItems(first: 100) { nodes { id project { id } } } } } }')"
+
+          ITEM_ID="$(echo "$ISSUE_DATA" | jq -r --arg pid "$PROJECT_ID" '.data.repository.issue.projectItems.nodes[] | select(.project.id == $pid) | .id' | head -n 1)"
+
+          if [[ -z "$ITEM_ID" ]]; then
+            echo "Issue #$ISSUE_NUMBER is not in Project #$PROJECT_NUMBER. Skipping."
+            exit 0
+          fi
+
+          CURRENT_OPTION_ID="$(gh api graphql -F projectId="$PROJECT_ID" -F itemId="$ITEM_ID" -F fieldId="$STATUS_FIELD_ID" -f query='query($projectId: ID!, $itemId: ID!, $fieldId: ID!) { node(id: $projectId) { ... on ProjectV2 { item(id: $itemId) { fieldValueByName(name: "Status") { ... on ProjectV2ItemFieldSingleSelectValue { optionId } } } } } }' | jq -r '.data.node.item.fieldValueByName.optionId // empty')"
+
+          if [[ "$CURRENT_OPTION_ID" == "$TARGET_OPTION_ID" ]]; then
+            echo "Issue #$ISSUE_NUMBER is already in $TARGET_STATUS. No status change needed."
+            exit 0
+          fi
+
+          gh api graphql -F projectId="$PROJECT_ID" -F itemId="$ITEM_ID" -F fieldId="$STATUS_FIELD_ID" -F optionId="$TARGET_OPTION_ID" -f query='mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: ID!) { updateProjectV2ItemFieldValue(input: { projectId: $projectId, itemId: $itemId, fieldId: $fieldId, value: { singleSelectOptionId: $optionId } }) { projectV2Item { id } } }'
+
+          echo "Moved issue #$ISSUE_NUMBER in Project #$PROJECT_NUMBER to $TARGET_STATUS"
