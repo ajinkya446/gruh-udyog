@@ -1,0 +1,50 @@
+name: Feature request
+description: Suggest an enhancement or new capability for the platform
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement. Please describe the problem and the desired solution below.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or opportunity
+      description: What user need or business challenge are you addressing?
+      placeholder: Sellers need a faster way to manage stock levels across multiple products.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe your idea or proposed user experience.
+      placeholder: Add a bulk inventory update flow from the seller dashboard.
+    validations:
+      required: true
+
+  - type: textarea
+    id: use_cases
+    attributes:
+      label: Use cases
+      description: Who benefits and how would this be used?
+      placeholder: Sellers can update stock quantities from a single screen without editing each listing individually.
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Have you considered other ways to solve this?
+      placeholder: Manual editing per product, spreadsheet import, or third-party inventory tools.
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: What would make this feature successful?
+      placeholder: |
+        - Seller can update stock for multiple products in one action
+        - Validation errors are surfaced clearly
+        - Changes are reflected in the product list immediately

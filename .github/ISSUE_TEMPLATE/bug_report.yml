@@ -1,0 +1,86 @@
+name: Bug report
+description: Report a bug or unexpected behavior in the app
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve Gruh Udyog. Please fill out the details below so we can reproduce and fix the issue.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Bug summary
+      description: What happened?
+      placeholder: Describe the issue in a few sentences.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: List the exact steps to reproduce this issue.
+      placeholder: |
+        1. Open the app
+        2. Sign in as a seller
+        3. Tap on "Add product"
+        4. Observe the crash
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+      placeholder: The product should be saved without error.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What actually happened?
+      placeholder: The app crashes and shows an error dialog.
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: App version or build number
+      description: If known, include the app version or commit SHA.
+      placeholder: e.g. v1.2.3 or commit abc1234
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      description: Where does the issue occur?
+      options:
+        - Android
+        - iOS
+        - Web
+        - Desktop
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment details
+      description: Include OS version, device model, browser, or any relevant setup.
+      placeholder: |
+        Android 14
+        Pixel 7
+        Flutter version: 3.x
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / screenshots / console output
+      description: Add relevant logs, screenshots, or error output.
+      placeholder: Paste logs or attach screenshots.
