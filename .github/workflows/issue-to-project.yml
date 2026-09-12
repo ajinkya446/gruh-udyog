@@ -7,6 +7,7 @@ on:
 permissions:
   contents: read
   issues: read
+  repository-projects: write
 
 jobs:
   add-issue-to-project:
@@ -27,15 +28,17 @@ jobs:
         run: |
           set -euo pipefail
 
-          PROJECT_DATA="$(gh api graphql -F login="$PROJECT_LOGIN" -F number="$PROJECT_NUMBER" -f query='query($login: String!, $number: Int!) { user(login: $login) { projectV2(number: $number) { id } } }')"
+          PROJECT_DATA="$(gh api graphql -F login="$PROJECT_LOGIN" -F number="$PROJECT_NUMBER" -f query='query($login: String!, $number: Int!) { user(login: $login) { projectV2(number: $number) { id title } } }')"
           PROJECT_ID="$(echo "$PROJECT_DATA" | jq -r '.data.user.projectV2.id // empty')"
+          PROJECT_TITLE="$(echo "$PROJECT_DATA" | jq -r '.data.user.projectV2.title // empty')"
 
           if [[ -z "$PROJECT_ID" ]]; then
-            echo "Project #$PROJECT_NUMBER could not be resolved. Skipping."
-            exit 0
+            echo "Project #$PROJECT_NUMBER could not be resolved. Check that the secret token has access to the user project and that Project #4 exists."
+            exit 1
           fi
 
           echo "project_id=$PROJECT_ID" >> "$GITHUB_OUTPUT"
+          echo "Resolved project: $PROJECT_TITLE (#$PROJECT_NUMBER)"
 
       - name: Skip if issue is already in the project
         id: skip
@@ -63,6 +66,14 @@ jobs:
         run: |
           set -euo pipefail
 
-          gh api graphql -F projectId="$PROJECT_ID" -F contentId="$ISSUE_NODE_ID" -f query='mutation($projectId: ID!, $contentId: ID!) { addProjectV2ItemById(input: { projectId: $projectId, contentId: $contentId }) { item { id } } }'
+          RESPONSE="$(gh api graphql -F projectId="$PROJECT_ID" -F contentId="$ISSUE_NODE_ID" -f query='mutation($projectId: ID!, $contentId: ID!) { addProjectV2ItemById(input: { projectId: $projectId, contentId: $contentId }) { item { id } } }')"
+
+          ITEM_ID="$(echo "$RESPONSE" | jq -r '.data.addProjectV2ItemById.item.id // empty')"
+
+          if [[ -z "$ITEM_ID" ]]; then
+            echo "$RESPONSE"
+            echo "Failed to add issue #$ISSUE_NUMBER to Project #$PROJECT_NUMBER. Check the PROJECT_TOKEN permissions and project access."
+            exit 1
+          fi
 
           echo "Added issue #$ISSUE_NUMBER to Project #$PROJECT_NUMBER"
