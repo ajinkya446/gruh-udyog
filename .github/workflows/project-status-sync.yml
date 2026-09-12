@@ -28,12 +28,12 @@ jobs:
           set -euo pipefail
 
           if [[ "$PR_ACTION" == "opened" || "$PR_ACTION" == "reopened" ]]; then
-            echo "status=In PR" >> "$GITHUB_OUTPUT"
+            echo "status=pr-opened" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           if [[ "$PR_ACTION" == "closed" && "$PR_MERGED" == "true" ]]; then
-            echo "status=Done" >> "$GITHUB_OUTPUT"
+            echo "status=done" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -61,6 +61,20 @@ jobs:
 
           PROJECT_ID="$(echo "$PROJECT_DATA" | jq -r '.data.user.projectV2.id // empty')"
           STATUS_FIELD_ID="$(echo "$PROJECT_DATA" | jq -r '.data.user.projectV2.fields.nodes[] | select(.name == "Status") | .id // empty' | head -n 1)"
+
+          if [[ "$TARGET_STATUS" == "pr-opened" ]]; then
+            if echo "$PROJECT_DATA" | jq -e '.data.user.projectV2.fields.nodes[] | select(.name == "Status") | .options[] | select(.name == "In PR")' >/dev/null; then
+              TARGET_STATUS="In PR"
+            elif echo "$PROJECT_DATA" | jq -e '.data.user.projectV2.fields.nodes[] | select(.name == "Status") | .options[] | select(.name == "In Progress")' >/dev/null; then
+              TARGET_STATUS="In Progress"
+            else
+              echo "No valid status option exists for PR-opened transitions. Available status values were not updated. Skipping."
+              exit 0
+            fi
+          elif [[ "$TARGET_STATUS" == "done" ]]; then
+            TARGET_STATUS="Done"
+          fi
+
           TARGET_OPTION_ID="$(echo "$PROJECT_DATA" | jq -r --arg name "$TARGET_STATUS" '.data.user.projectV2.fields.nodes[] | select(.name == "Status") | .options[] | select(.name == $name) | .id // empty' | head -n 1)"
 
           if [[ -z "$PROJECT_ID" || -z "$STATUS_FIELD_ID" || -z "$TARGET_OPTION_ID" ]]; then
