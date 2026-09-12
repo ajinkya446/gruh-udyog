@@ -14,7 +14,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
-      PROJECT_LOGIN: ajinkya446
       PROJECT_NUMBER: 4
       REPO_OWNER: ${{ github.repository_owner }}
       REPO_NAME: ${{ github.event.repository.name }}
@@ -22,18 +21,33 @@ jobs:
       ISSUE_NODE_ID: ${{ github.event.issue.node_id }}
 
     steps:
+      - name: Check token access to Projects
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api graphql -f query='query { viewer { login } }' >/dev/null
+          echo "GitHub token is valid and authenticated."
+
       - name: Resolve project ID
         id: project
         shell: bash
         run: |
           set -euo pipefail
 
-          PROJECT_DATA="$(gh api graphql -F login="$PROJECT_LOGIN" -F number="$PROJECT_NUMBER" -f query='query($login: String!, $number: Int!) { user(login: $login) { projectV2(number: $number) { id title } } }')"
-          PROJECT_ID="$(echo "$PROJECT_DATA" | jq -r '.data.user.projectV2.id // empty')"
-          PROJECT_TITLE="$(echo "$PROJECT_DATA" | jq -r '.data.user.projectV2.title // empty')"
+          PROJECT_DATA="$(gh api graphql -F number="$PROJECT_NUMBER" -f query='query($number: Int!) { viewer { projectV2(number: $number) { id title } } }')"
+          PROJECT_ID="$(echo "$PROJECT_DATA" | jq -r '.data.viewer.projectV2.id // empty')"
+          PROJECT_TITLE="$(echo "$PROJECT_DATA" | jq -r '.data.viewer.projectV2.title // empty')"
 
           if [[ -z "$PROJECT_ID" ]]; then
-            echo "Project #$PROJECT_NUMBER could not be resolved. Check that the secret token has access to the user project and that Project #4 exists."
+            PROJECT_DATA="$(gh api graphql -F login="$REPO_OWNER" -F number="$PROJECT_NUMBER" -f query='query($login: String!, $number: Int!) { user(login: $login) { projectV2(number: $number) { id title } } }')"
+            PROJECT_ID="$(echo "$PROJECT_DATA" | jq -r '.data.user.projectV2.id // empty')"
+            PROJECT_TITLE="$(echo "$PROJECT_DATA" | jq -r '.data.user.projectV2.title // empty')"
+          fi
+
+          if [[ -z "$PROJECT_ID" ]]; then
+            echo "Project #$PROJECT_NUMBER could not be resolved for this token."
+            echo "This usually means PROJECT_TOKEN does not have access to the user-owned project or it is not the owner of that project."
+            echo "Grant the token access to the repo and the project, then retry."
             exit 1
           fi
 
@@ -72,7 +86,7 @@ jobs:
 
           if [[ -z "$ITEM_ID" ]]; then
             echo "$RESPONSE"
-            echo "Failed to add issue #$ISSUE_NUMBER to Project #$PROJECT_NUMBER. Check the PROJECT_TOKEN permissions and project access."
+            echo "Failed to add issue #$ISSUE_NUMBER to Project #$PROJECT_NUMBER. Check PROJECT_TOKEN permissions and project access."
             exit 1
           fi
 
