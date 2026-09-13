@@ -1,0 +1,26 @@
+name: gruh_udyog
+
+packages:
+  - apps/*
+  - packages/*
+
+scripts:
+  get:
+    run: melos exec -c 1 -- flutter pub get
+    description: Fetch dependencies for every package in the monorepo.
+
+  analyze:
+    run: melos exec -c 1 -- flutter analyze
+    description: Run static analysis for every Flutter package.
+
+  test:
+    run: melos exec --dir-exists=test -c 1 -- flutter test
+    description: Run unit/widget tests in each package that contains a test directory.
+
+  coverage:
+    run: melos exec --dir-exists=test -c 1 -- flutter test --coverage
+    description: Run tests with coverage in each package that contains a test directory.
+
+  format:
+    run: melos exec -c 1 -- dart format lib test
+    description: Format Dart code in each package.
