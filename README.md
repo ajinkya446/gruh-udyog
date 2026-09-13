@@ -89,6 +89,39 @@ This repository is a Flutter app project using Dart and Flutter. The application
 - Android Studio / VS Code with Flutter support
 - A connected device or emulator
 
+### Monorepo setup with Melos
+
+This repository is organized as a Flutter monorepo with separate apps for buyer, seller, and admin. Melos helps us manage shared commands for dependency installation, analysis, and testing.
+
+1. Install Melos if you do not already have it:
+
+```bash
+dart pub global activate melos
+```
+
+2. Install dependencies across the monorepo:
+
+```bash
+flutter pub get
+melos bootstrap
+```
+
+3. Run common monorepo commands:
+
+```bash
+melos run get
+melos run analyze
+melos run test
+melos run coverage
+```
+
+4. Run a specific app:
+
+```bash
+cd apps/buyer
+flutter run
+```
+
 ### Run the app
 
 ```bash
